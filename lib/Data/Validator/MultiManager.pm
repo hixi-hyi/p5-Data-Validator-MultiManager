@@ -117,17 +117,17 @@ sub get_success {
 sub error {
     my ($self, $name) = @_;
 
-    my $errors = $self->errors($name) or return;
+    my $errors = $self->errors($name) or return {};
     return $errors->[0];
 }
 
 sub errors {
     my ($self, $name) = @_;
     if ($name) {
-        return $self->{errors}->{$name} || undef;
+        return $self->{errors}->{$name} || [];
     }
     else {
-        return [ map { @{$_} } values $self->{errors} ] || undef;
+        return [ map { @{$_} } values $self->{errors} ] || [];
     }
 }
 
