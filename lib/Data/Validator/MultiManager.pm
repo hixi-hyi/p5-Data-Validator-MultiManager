@@ -4,17 +4,21 @@ use strict;
 use warnings;
 
 use Carp qw(croak);
+use Clone qw(clone);
 
 our $VERSION = "0.01";
 
 sub new {
-    my $class = shift;
+    my ($class, $validator) = @_;
+
+    $validator |= 'Data::Validator';
 
     bless {
-        validators => {},
-        common     => undef,
-        success    => [],
-        errors     => {},
+        validator_class => $validator,
+        validators      => {},
+        common          => {},
+        success         => [],
+        errors          => {},
     }, $class;
 }
 
@@ -22,52 +26,50 @@ sub add {
     my ($self, @args) = @_;
     croak 'must be specified key-value pair' unless @args && scalar @args % 2 == 0;
     my %pairs = @args;
+    eval "use $self->{validator_class};";
+    if ($@) {
+        die sprintf "Can't locate %s", $self->{validator_class};
+    }
 
-    while (my ($name, $validator) = each %pairs) {
-        $validator->with('NoThrow', 'AllowExtra');
+    while (my ($name, $rule) = each %pairs) {
+        my %merged_rule = (%{clone $self->{common}}, %$rule);
+        my $validator = $self->{validator_class}->new(%merged_rule);
+        $validator->with('NoThrow');
         $self->{validators}->{$name} = $validator;
     }
 }
 
 sub set_common {
-    my ($self, $validator) = @_;
-    $validator->with('NoThrow', 'AllowExtra');
-    $self->{common} = $validator;
+    my ($self, %rule) = @_;
+    $self->{common} = \%rule;
 }
 
 sub validate {
     my ($self, $param) = @_;
     $self->_init;
 
-    if ($self->{common}) {
-        $self->{common}->validate($param);
-        if (my $errors = $self->{common}->clear_errors) {
-            map { push @{$self->{errors}->{common}}, @{$_} } $errors;
-            for my $name (keys %{$self->{validators}}) {
-                map { push @{$self->{errors}->{$name}}, @{$_} } $errors;
-            }
-        }
-    }
-
+    my %args;
     for my $name (keys %{$self->{validators}}) {
         my $validator = $self->{validators}->{$name};
-        $validator->validate($param);
+        $args{$name} = $validator->validate($param);
         $self->_after($name, $validator->clear_errors);
     }
+    return \%args;
 }
 
-sub validate_with {
+sub validate_by {
     my ($self, $name, $param) = @_;
     $self->_init;
+
     my $validator = $self->{validators}->{$name};
-    $validator->validate($param);
+    my $args = $validator->validate($param);
     $self->_after($name, $validator->clear_errors);
+    return $args;
 }
 
 sub _init {
     my $self = shift;
     $self->{errors} = {};
-    $self->{errors}->{common} = [];
     for my $name (keys $self->{validators}) {
         $self->{errors}->{$name} = [];
     }
@@ -86,10 +88,8 @@ sub _after {
     }
 }
 
-sub has_success {
+sub is_success {
     my ($self, $name) = @_;
-
-    return 0 if @{$self->{errors}->{common}};
 
     if ($name) {
         if ($self->{validators}->{$name} && not @{$self->{errors}->{$name}}) {
@@ -102,6 +102,11 @@ sub has_success {
         return 1 unless (@{$self->{errors}->{$name}});
     }
     return 0;
+}
+
+sub is_xor {
+    my $self = shift;
+    return (scalar @{$self->get_success} == 1)? 1: 0;
 }
 
 sub get_success {
