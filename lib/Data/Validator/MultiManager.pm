@@ -197,7 +197,7 @@ it under the same terms as Perl itself.
 
 =head1 AUTHOR
 
-Hiroyoshi Houchi E<lt>git@hixi-hyi.comE<gt>
+Hiroyoshi Houchi E<lt>hixi@cpan.orgE<gt>
 
 =cut
 
