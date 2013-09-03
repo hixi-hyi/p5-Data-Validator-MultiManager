@@ -4,6 +4,7 @@ use warnings;
 use Test::More;
 use Test::Deep;
 
+use Data::Validator;
 use Data::Validator::MultiManager;
 
 my $manager = Data::Validator::MultiManager->new;

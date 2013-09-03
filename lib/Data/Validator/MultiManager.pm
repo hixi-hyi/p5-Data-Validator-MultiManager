@@ -5,13 +5,14 @@ use warnings;
 
 use Carp qw(croak);
 use Clone qw(clone);
+use Data::Validator;
 
 our $VERSION = "0.01";
 
 sub new {
     my ($class, $validator) = @_;
 
-    $validator |= 'Data::Validator';
+    $validator ||= 'Data::Validator';
 
     bless {
         validator_class => $validator,
@@ -26,10 +27,6 @@ sub add {
     my ($self, @args) = @_;
     croak 'must be specified key-value pair' unless @args && scalar @args % 2 == 0;
     my %pairs = @args;
-    eval "use $self->{validator_class};";
-    if ($@) {
-        die sprintf "Can't locate %s", $self->{validator_class};
-    }
 
     while (my ($name, $rule) = each %pairs) {
         my %merged_rule = (%{clone $self->{common}}, %$rule);
@@ -46,28 +43,28 @@ sub set_common {
 
 sub validate {
     my ($self, $param) = @_;
-    $self->_init;
+    $self->_reset;
 
     my %args;
     for my $name (keys %{$self->{validators}}) {
         my $validator = $self->{validators}->{$name};
         $args{$name} = $validator->validate($param);
-        $self->_after($name, $validator->clear_errors);
+        $self->_after_validate($name, $validator->clear_errors);
     }
     return \%args;
 }
 
 sub validate_by {
     my ($self, $name, $param) = @_;
-    $self->_init;
+    $self->_reset;
 
     my $validator = $self->{validators}->{$name};
     my $args = $validator->validate($param);
-    $self->_after($name, $validator->clear_errors);
+    $self->_after_validate($name, $validator->clear_errors);
     return $args;
 }
 
-sub _init {
+sub _reset {
     my $self = shift;
     $self->{errors} = {};
     for my $name (keys $self->{validators}) {
@@ -76,7 +73,7 @@ sub _init {
     $self->{success} = [];
 }
 
-sub _after {
+sub _after_validate {
     my ($self, $name, $errors) = @_;
     if ($errors) {
         map { push @{$self->{errors}->{$name}}, @{$_} } $errors;
