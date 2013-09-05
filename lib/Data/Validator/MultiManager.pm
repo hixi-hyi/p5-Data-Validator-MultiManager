@@ -43,7 +43,8 @@ sub set_common {
 
 sub validate {
     my ($self, $param) = @_;
-    $self->_reset;
+
+    my $object = Data::Validator::MultiManager::Object->new;
 
     my %args;
     for my $name (keys %{$self->{validators}}) {
@@ -62,15 +63,6 @@ sub validate_by {
     my $args = $validator->validate($param);
     $self->_after_validate($name, $validator->clear_errors);
     return $args;
-}
-
-sub _reset {
-    my $self = shift;
-    $self->{errors} = {};
-    for my $name (keys $self->{validators}) {
-        $self->{errors}->{$name} = [];
-    }
-    $self->{success} = [];
 }
 
 sub _after_validate {
@@ -126,6 +118,63 @@ sub errors {
     else {
         return [ map { @{$_} } values $self->{errors} ] || [];
     }
+}
+
+package
+    Data::Validator::MultiManager::Object;
+
+sub new {
+    my $class = shift;
+
+    bless {
+        success => [],
+        errors  => {},
+        result  => {},
+    }, $class;
+}
+
+sub set {
+    my ($self, $tag, $result, $errors) = @_;
+
+    $self->set_result($tag, $result);
+
+    if ($errors) {
+        $self->set_error($tag, $errors);
+    }
+    else {
+        $self->set_success($tag);
+    }
+}
+
+sub set_result {
+    my ($self, $tag, $result) = @_;
+    $self->{result}->{$tag} = $result;
+}
+
+sub set_error {
+    my ($self, $tag, $errors) = @_;
+    $self->{errors}->{$tag} = $errors;
+}
+
+sub set_success {
+    my ($self, $tag) = @_;
+    push $self->{success}, $tag;
+}
+
+sub is_success {
+    my ($self, $tag) = @_;
+
+    if ($tag) {
+        if (exists $self->{errors}->{$tag}) {
+            return 0;
+        }
+        return 1;
+    }
+
+    if (0 < scalar @{$self->{success}}) {
+        return 1;
+    }
+    return 0;
 }
 
 
