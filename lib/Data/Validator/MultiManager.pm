@@ -28,11 +28,11 @@ sub add {
     croak 'must be specified key-value pair' unless @args && scalar @args % 2 == 0;
     my %pairs = @args;
 
-    while (my ($name, $rule) = each %pairs) {
+    while (my ($tag, $rule) = each %pairs) {
         my %merged_rule = (%{clone $self->{common}}, %$rule);
         my $validator = $self->{validator_class}->new(%merged_rule);
         $validator->with('NoThrow');
-        $self->{validators}->{$name} = $validator;
+        $self->{validators}->{$tag} = $validator;
     }
 }
 
@@ -46,57 +46,57 @@ sub validate {
     $self->_reset;
 
     my %args;
-    for my $name (keys %{$self->{validators}}) {
-        my $validator = $self->{validators}->{$name};
-        $args{$name} = $validator->validate($param);
-        $self->_after_validate($name, $validator->clear_errors);
+    for my $tag (keys %{$self->{validators}}) {
+        my $validator = $self->{validators}->{$tag};
+        $args{$tag} = $validator->validate($param);
+        $self->_after_validate($tag, $validator->clear_errors);
     }
     return \%args;
 }
 
 sub validate_by {
-    my ($self, $name, $param) = @_;
+    my ($self, $tag, $param) = @_;
     $self->_reset;
 
-    my $validator = $self->{validators}->{$name};
+    my $validator = $self->{validators}->{$tag};
     my $args = $validator->validate($param);
-    $self->_after_validate($name, $validator->clear_errors);
+    $self->_after_validate($tag, $validator->clear_errors);
     return $args;
 }
 
 sub _reset {
     my $self = shift;
     $self->{errors} = {};
-    for my $name (keys $self->{validators}) {
-        $self->{errors}->{$name} = [];
+    for my $tag (keys $self->{validators}) {
+        $self->{errors}->{$tag} = [];
     }
     $self->{success} = [];
 }
 
 sub _after_validate {
-    my ($self, $name, $errors) = @_;
+    my ($self, $tag, $errors) = @_;
     if ($errors) {
-        map { push @{$self->{errors}->{$name}}, @{$_} } $errors;
+        map { push @{$self->{errors}->{$tag}}, @{$_} } $errors;
         return 1;
     }
     else {
-        push @{$self->{success}}, $name;
+        push @{$self->{success}}, $tag;
         return 0;
     }
 }
 
 sub is_success {
-    my ($self, $name) = @_;
+    my ($self, $tag) = @_;
 
-    if ($name) {
-        if ($self->{validators}->{$name} && not @{$self->{errors}->{$name}}) {
+    if ($tag) {
+        if ($self->{validators}->{$tag} && not @{$self->{errors}->{$tag}}) {
             return 1;
         }
         return 0;
     }
 
-    for my $name (keys $self->{validators}) {
-        return 1 unless (@{$self->{errors}->{$name}});
+    for my $tag (keys $self->{validators}) {
+        return 1 unless (@{$self->{errors}->{$tag}});
     }
     return 0;
 }
@@ -112,16 +112,16 @@ sub get_success {
 }
 
 sub error {
-    my ($self, $name) = @_;
+    my ($self, $tag) = @_;
 
-    my $errors = $self->errors($name) or return {};
+    my $errors = $self->errors($tag) or return {};
     return $errors->[0];
 }
 
 sub errors {
-    my ($self, $name) = @_;
-    if ($name) {
-        return $self->{errors}->{$name} || [];
+    my ($self, $tag) = @_;
+    if ($tag) {
+        return $self->{errors}->{$tag} || [];
     }
     else {
         return [ map { @{$_} } values $self->{errors} ] || [];
