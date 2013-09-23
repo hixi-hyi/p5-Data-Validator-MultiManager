@@ -16,7 +16,7 @@ sub new {
 
     bless {
         validator_class => $validator,
-        validators      => {},
+        validators      => [],
         common          => {},
         success         => [],
         errors          => {},
@@ -32,7 +32,11 @@ sub add {
         my %merged_rule = (%{clone $self->{common}}, %$rule);
         my $validator = $self->{validator_class}->new(%merged_rule);
         $validator->with('NoThrow');
-        $self->{validators}->{$tag} = $validator;
+
+        push @{$self->{validators}}, {
+            tag       => $tag,
+            validator => $validator,
+        };
     }
 }
 
@@ -46,29 +50,20 @@ sub validate {
     $self->_reset;
 
     my %args;
-    for my $tag (keys %{$self->{validators}}) {
-        my $validator = $self->{validators}->{$tag};
-        $args{$tag} = $validator->validate($param);
+    for my $rule (@{$self->{validators}}) {
+        my $tag       = $rule->{tag};
+        my $validator = $rule->{validator};
+        $args{$tag}   = $validator->validate($param);
         $self->_after_validate($tag, $validator->clear_errors);
     }
     return \%args;
 }
 
-sub validate_by {
-    my ($self, $tag, $param) = @_;
-    $self->_reset;
-
-    my $validator = $self->{validators}->{$tag};
-    my $args = $validator->validate($param);
-    $self->_after_validate($tag, $validator->clear_errors);
-    return $args;
-}
-
 sub _reset {
     my $self = shift;
     $self->{errors} = {};
-    for my $tag (keys $self->{validators}) {
-        $self->{errors}->{$tag} = [];
+    for my $rule (@{$self->{validators}}) {
+        $self->{errors}->{$rule->{tag}} = [];
     }
     $self->{success} = [];
 }
@@ -89,26 +84,20 @@ sub is_success {
     my ($self, $tag) = @_;
 
     if ($tag) {
-        if ($self->{validators}->{$tag} && not @{$self->{errors}->{$tag}}) {
-            return 1;
-        }
-        return 0;
+        return @{ $self->{errors}->{$tag} } ? 0: 1;
     }
 
-    for my $tag (keys $self->{validators}) {
-        return 1 unless (@{$self->{errors}->{$tag}});
-    }
-    return 0;
-}
-
-sub is_xor {
-    my $self = shift;
-    return (scalar @{$self->get_success} == 1)? 1: 0;
+    return (scalar @{$self->get_success} == 0) ? 0: 1;
 }
 
 sub get_success {
     my $self = shift;
     return $self->{success};
+}
+
+sub is_xor {
+    my $self = shift;
+    return (scalar @{$self->get_success} == 1) ? 1: 0;
 }
 
 sub error {
@@ -120,6 +109,7 @@ sub error {
 
 sub errors {
     my ($self, $tag) = @_;
+
     if ($tag) {
         return $self->{errors}->{$tag} || [];
     }
