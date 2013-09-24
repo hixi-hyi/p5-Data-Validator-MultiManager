@@ -54,7 +54,7 @@ sub validate {
         my $tag       = $rule->{tag};
         my $validator = $rule->{validator};
         $args{$tag}   = $validator->validate($param);
-        $self->_after_validate($tag, $validator->clear_errors);
+        $self->_after_validate($tag, $validator);
     }
     return \%args;
 }
@@ -69,7 +69,8 @@ sub _reset {
 }
 
 sub _after_validate {
-    my ($self, $tag, $errors) = @_;
+    my ($self, $tag, $validator) = @_;
+    my $errors = $validator->clear_errors;
     if ($errors) {
         map { push @{$self->{errors}->{$tag}}, @{$_} } $errors;
         return 1;
