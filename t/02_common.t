@@ -20,55 +20,45 @@ $manager->add(
 );
 
 subtest 'collection' => sub {
-    $manager->validate({
+    my $p = $manager->validate({
         category => 1,
         id       => [1,2],
     });
-    ok $manager->is_success;
-
-    is_deeply $manager->get_success, ['collection'];
-    ok $manager->is_success('collection');
-    is_deeply $manager->errors('collection'), [];
-
-    ok not $manager->is_success('entry');
-    cmp_deeply $manager->error('entry'), superhashof( { name => 'id', type => 'InvalidValue' } );
+    is $manager->valid, 'collection';
+    ok exists $p->{collection};
+    ok not exists $p->{entry};
 };
 
 subtest 'entry' => sub {
-    $manager->validate({
+    my $p = $manager->validate({
         category => 1,
         id       => 1,
     });
-    ok $manager->is_success;
-
-    is_deeply $manager->get_success, ['entry'];
-    ok $manager->is_success('entry');
-    is_deeply $manager->errors('entry'), [];
-
-    ok not $manager->is_success('collection');
-    cmp_deeply $manager->error('collection'), superhashof( { name => 'id', type => 'InvalidValue' } );
+    is $manager->valid, 'entry';
+    ok not exists $p->{collection};
+    ok exists $p->{entry};
 };
 
 subtest 'fail category (entry)' => sub {
-    $manager->validate({
+    my $p = $manager->validate({
         category => 'candy',
         id       => 1,
     });
-    ok not $manager->is_success;
-    ok not $manager->is_success('entry');
-
+    ok not $manager->valid;
     cmp_deeply $manager->error('entry'), superhashof( { name => 'category', type => 'InvalidValue' } );
+    ok not exists $p->{collection};
+    ok not exists $p->{entry};
 };
 
 subtest 'fail category (collection)' => sub {
-    $manager->validate({
+    my $p = $manager->validate({
         category => 'candy',
         id       => [1],
     });
-    ok not $manager->is_success;
-    ok not $manager->is_success('collection');
-
+    ok not $manager->valid;
     cmp_deeply $manager->error('collection'), superhashof( { name => 'category', type => 'InvalidValue' } );
+    ok not exists $p->{collection};
+    ok not exists $p->{entry};
 };
 
 done_testing;

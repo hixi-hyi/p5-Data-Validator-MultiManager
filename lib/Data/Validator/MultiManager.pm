@@ -18,8 +18,8 @@ sub new {
         validator_class => $validator,
         validators      => [],
         common          => {},
-        success         => [],
         errors          => {},
+        valid           => '',
     }, $class;
 }
 
@@ -49,62 +49,50 @@ sub validate {
     my ($self, $param) = @_;
     $self->_reset;
 
-    my %args;
     for my $rule (@{$self->{validators}}) {
-        my $tag       = $rule->{tag};
-        my $validator = $rule->{validator};
-        $args{$tag}   = $validator->validate($param);
-        $self->_after_validate($tag, $validator);
+        my ($tag, $validator) = ($rule->{tag}, $rule->{validator});
+        my $args              = $validator->validate($param);
+
+        if (my $errors = $validator->clear_errors) {
+            $self->{errors}->{$tag} = $errors;
+        }
+        else {
+            $self->_reset;
+            $self->{valid} = $tag;
+            return {
+                $tag      => $args,
+                _original => $param,
+            };
+        }
     }
-    return \%args;
+    return { _original => $param };
+}
+
+sub valid {
+    my $self = shift;
+    return $self->{valid};
 }
 
 sub _reset {
+    my $self = shift;
+    $self->clear_errors;
+    $self->{valid} = '';
+}
+
+sub clear_errors {
     my $self = shift;
     $self->{errors} = {};
     for my $rule (@{$self->{validators}}) {
         $self->{errors}->{$rule->{tag}} = [];
     }
-    $self->{success} = [];
-}
-
-sub _after_validate {
-    my ($self, $tag, $validator) = @_;
-    my $errors = $validator->clear_errors;
-    if ($errors) {
-        map { push @{$self->{errors}->{$tag}}, @{$_} } $errors;
-        return 1;
-    }
-    else {
-        push @{$self->{success}}, $tag;
-        return 0;
-    }
-}
-
-sub is_success {
-    my ($self, $tag) = @_;
-
-    if ($tag) {
-        return @{ $self->{errors}->{$tag} } ? 0: 1;
-    }
-
-    return (scalar @{$self->get_success} == 0) ? 0: 1;
-}
-
-sub get_success {
-    my $self = shift;
-    return $self->{success};
-}
-
-sub is_xor {
-    my $self = shift;
-    return (scalar @{$self->get_success} == 1) ? 1: 0;
 }
 
 sub error {
     my ($self, $tag) = @_;
 
-    my $errors = $self->errors($tag) or return {};
+    my $errors = $self->errors($tag);
+
+    return undef unless $errors;
     return $errors->[0];
 }
 
@@ -115,7 +103,11 @@ sub errors {
         return $self->{errors}->{$tag} || [];
     }
     else {
-        return [ map { @{$_} } values $self->{errors} ] || [];
+        for my $rule (@{$self->{validators}}) {
+            if (my $errors = $self->{errors}->{$rule->{tag}}) {
+                return $errors;
+            }
+        }
     }
 }
 
