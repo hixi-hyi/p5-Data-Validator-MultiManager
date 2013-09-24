@@ -5,7 +5,6 @@ use warnings;
 
 use Carp qw(croak);
 use Clone qw(clone);
-use Data::Validator;
 
 our $VERSION = "0.01";
 
@@ -13,6 +12,7 @@ sub new {
     my ($class, $validator) = @_;
 
     $validator ||= 'Data::Validator';
+    _load_class($validator);
 
     bless {
         validator_class => $validator,
@@ -118,6 +118,23 @@ sub errors {
     }
 }
 
+
+# copy from Plack::Util
+sub _load_class {
+    my($class, $prefix) = @_;
+
+    if ($prefix) {
+        unless ($class =~ s/^\+// || $class =~ /^$prefix/) {
+            $class = "$prefix\::$class";
+        }
+    }
+
+    my $file = $class;
+    $file =~ s!::!/!g;
+    require "$file.pm"; ## no critic
+
+    return $class;
+}
 
 1;
 __END__

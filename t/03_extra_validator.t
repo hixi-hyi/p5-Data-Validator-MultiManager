@@ -4,7 +4,6 @@ use warnings;
 use Test::More;
 use Test::Deep;
 
-use Data::Validator::Recursive;
 use Data::Validator::MultiManager;
 
 my $manager = Data::Validator::MultiManager->new('Data::Validator::Recursive');
