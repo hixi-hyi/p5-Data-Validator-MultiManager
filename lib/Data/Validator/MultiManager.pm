@@ -26,9 +26,8 @@ sub new {
 sub add {
     my ($self, @args) = @_;
     croak 'must be specified key-value pair' unless @args && scalar @args % 2 == 0;
-    my %pairs = @args;
 
-    while (my ($tag, $rule) = each %pairs) {
+    while (my ($tag, $rule) = splice @args, 0, 2) {
         my %merged_rule = (%{clone $self->{common}}, %$rule);
         my $validator = $self->{validator_class}->new(%merged_rule);
         $validator->with('NoThrow');
