@@ -102,14 +102,25 @@ sub errors {
         return $self->{errors}->{$tag} || [];
     }
     else {
-        for my $rule (@{$self->{validators}}) {
-            if (my $errors = $self->{errors}->{$rule->{tag}}) {
-                return $errors;
-            }
-        }
+        return $self->guess_error_to_match || [];
     }
 }
 
+sub guess_error_to_match {
+    my ($self) = @_;
+
+    my %diff;
+    for my $rule (reverse @{$self->{validators}}) {
+        my $tag  = $rule->{tag};
+
+        if (my $errors = $self->{errors}->{$tag}) {
+            my $error_size     = scalar @$errors;
+            $diff{$error_size} = $tag;
+        }
+    }
+    my $min = (sort keys %diff)[0];
+    return $self->{errors}->{$diff{$min}};
+}
 
 # copy from Plack::Util
 sub _load_class {
