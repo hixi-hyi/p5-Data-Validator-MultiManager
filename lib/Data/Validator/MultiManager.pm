@@ -19,8 +19,6 @@ sub new {
         priority        => [],
         validators      => {},
         common          => {},
-        errors          => {},
-        valid           => '',
     }, $class;
 }
 
