@@ -6,7 +6,7 @@ use Data::Validator::MultiManager;
 
 my $manager = Data::Validator::MultiManager->new;
 # my $manager = Data::Validator::MultiManager->new('Data::Validator::Recursive');
-$manager->set_common(
+$manager->common(
     category => { isa => 'Int' },
 );
 $manager->add(
@@ -23,18 +23,23 @@ my $param = {
     id       => [1,2],
 };
 
-$manager->validate($param);
+my $result = $manager->validate($param);
 
-if ($manager->is_success) {
-    print "success\n";
+if (my $e = $result->errors) {
+    errors_common($e);
+    # $result->invalid is guess to match some validator
+    if ($result->invalid eq 'collection') {
+        errors_collection($e);
+    }
+    elsif ($result->invalid eq 'entry') {
+        errors_entry($e);
+    }
 }
-if ($manager->is_xor) {
-    print "independent validation\n";
-}
-
-if ($manager->is_success('collection')) {
-    print "collection process\n";
-}
-if ($manager->is_success('entry')) {
-    print "entry process\n";
+else {
+    if ($result->valid eq 'collection') {
+        process_collection($result->value);
+    }
+    elsif ($result->valid eq 'entry') {
+        process_entry($result->value);
+    }
 }

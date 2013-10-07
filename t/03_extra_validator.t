@@ -23,32 +23,26 @@ $manager->add(
 );
 
 subtest 'nest' => sub {
-    my $p = $manager->validate({
+    my $result = $manager->validate({
         human => {
             name => 'hixi',
             age  => 24,
         },
     });
-    is $manager->valid, 'nest';
-    ok exists $p->{nest};
-    ok not exists $p->{flat};
+    is $result->valid, 'nest';
 };
 
 subtest 'flat' => sub {
-    my $p = $manager->validate({
+    my $result = $manager->validate({
         name => 'hixi',
         age  => 24,
     });
-    is $manager->valid, 'flat';
-    ok not exists $p->{nest};
-    ok exists $p->{flat};
+    is $result->valid, 'flat';
 };
 
 subtest 'fail' => sub {
-    my $p = $manager->validate({ id => 'aaa' });
-    ok not $manager->valid;
-    ok not exists $p->{nest};
-    ok not exists $p->{flat};
+    my $result = $manager->validate({ id => 'aaa' });
+    ok not $result->valid;
 };
 
 done_testing;

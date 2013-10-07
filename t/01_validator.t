@@ -18,29 +18,28 @@ $manager->add(
 );
 
 subtest 'collection' => sub {
-    my $p = $manager->validate({ id => [1, 2] });
+    my $result = $manager->validate({ id => [1, 2] });
 
-    is $manager->valid, 'collection';
-    ok not exists $p->{entry};
-    ok exists $p->{collection};
+    ok $result->valid;
+    is $result->valid, 'collection';
+    cmp_deeply $result->value, { id => [1, 2] };
 };
 
 subtest 'entry' => sub {
-    my $p = $manager->validate({ id => 1 });
+    my $result = $manager->validate({ id => 1 });
 
-    is $manager->valid, 'entry';
-    ok not exists $p->{collection};
-    ok exists $p->{entry};
+    ok $result->valid;
+    is $result->valid, 'entry';
+    cmp_deeply $result->value, { id => 1 };
 };
 
 subtest 'fail' => sub {
-    my $p =$manager->validate({ id => 'aaa' });
+    my $result = $manager->validate({ id => 'aaa' });
 
-    ok not $manager->valid;
-    cmp_deeply $manager->error('entry'), superhashof( { name => 'id', type => 'InvalidValue' } );
-    cmp_deeply $manager->error('collection'), superhashof( { name => 'id', type => 'InvalidValue' } );
-    ok not exists $p->{collection};
-    ok not exists $p->{entry};
+    ok not $result->valid;
+    cmp_deeply $result->error('entry'), superhashof( { name => 'id', type => 'InvalidValue' } );
+    cmp_deeply $result->error('collection'), superhashof( { name => 'id', type => 'InvalidValue' } );
+    ok not $result->value;
 };
 
 done_testing;

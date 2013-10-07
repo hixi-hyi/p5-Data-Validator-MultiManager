@@ -7,7 +7,7 @@ use Test::Deep;
 use Data::Validator::MultiManager;
 
 my $manager = Data::Validator::MultiManager->new;
-$manager->set_common(
+$manager->common(
     category => { isa => 'Int' },
 );
 $manager->add(
@@ -20,45 +20,37 @@ $manager->add(
 );
 
 subtest 'collection' => sub {
-    my $p = $manager->validate({
+    my $result = $manager->validate({
         category => 1,
         id       => [1,2],
     });
-    is $manager->valid, 'collection';
-    ok exists $p->{collection};
-    ok not exists $p->{entry};
+    is $result->valid, 'collection';
 };
 
 subtest 'entry' => sub {
-    my $p = $manager->validate({
+    my $result = $manager->validate({
         category => 1,
         id       => 1,
     });
-    is $manager->valid, 'entry';
-    ok not exists $p->{collection};
-    ok exists $p->{entry};
+    is $result->valid, 'entry';
 };
 
 subtest 'fail category (entry)' => sub {
-    my $p = $manager->validate({
+    my $result = $manager->validate({
         category => 'candy',
         id       => 1,
     });
-    ok not $manager->valid;
-    cmp_deeply $manager->error('entry'), superhashof( { name => 'category', type => 'InvalidValue' } );
-    ok not exists $p->{collection};
-    ok not exists $p->{entry};
+    ok not $result->valid;
+    cmp_deeply $result->error('entry'), superhashof( { name => 'category', type => 'InvalidValue' } );
 };
 
 subtest 'fail category (collection)' => sub {
-    my $p = $manager->validate({
+    my $result = $manager->validate({
         category => 'candy',
         id       => [1],
     });
-    ok not $manager->valid;
-    cmp_deeply $manager->error('collection'), superhashof( { name => 'category', type => 'InvalidValue' } );
-    ok not exists $p->{collection};
-    ok not exists $p->{entry};
+    ok not $result->valid;
+    cmp_deeply $result->error('collection'), superhashof( { name => 'category', type => 'InvalidValue' } );
 };
 
 done_testing;

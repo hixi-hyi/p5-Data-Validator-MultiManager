@@ -16,7 +16,8 @@ sub new {
 
     bless {
         validator_class => $validator,
-        validators      => [],
+        priority        => [],
+        validators      => {},
         common          => {},
         errors          => {},
         valid           => '',
@@ -32,94 +33,34 @@ sub add {
         my $validator = $self->{validator_class}->new(%merged_rule);
         $validator->with('NoThrow');
 
-        push @{$self->{validators}}, {
-            tag       => $tag,
-            validator => $validator,
-        };
+        push @{$self->{priority}}, $tag;
+        $self->{validators}->{$tag} = $validator;
     }
 }
 
-sub set_common {
+sub common {
     my ($self, %rule) = @_;
     $self->{common} = \%rule;
 }
 
 sub validate {
     my ($self, $param) = @_;
-    $self->_reset;
+    my $result = Data::Validator::MultiManager::Result->new($param, $self->{priority});
 
-    for my $rule (@{$self->{validators}}) {
-        my ($tag, $validator) = ($rule->{tag}, $rule->{validator});
-        my $args              = $validator->validate($param);
+    for my $tag (@{$self->{priority}}) {
+        my $validator = $self->{validators}->{$tag};
+        my $args      = $validator->validate($param);
 
         if (my $errors = $validator->clear_errors) {
-            $self->{errors}->{$tag} = $errors;
+            $result->set_errors($tag, $errors);
         }
         else {
-            $self->_reset;
-            $self->{valid} = $tag;
-            return {
-                $tag      => $args,
-                _original => $param,
-            };
+            $result->set_tag($tag);
+            $result->set_value($tag, $args);
+            return $result;
         }
     }
-    return { _original => $param };
-}
-
-sub valid {
-    my $self = shift;
-    return $self->{valid};
-}
-
-sub _reset {
-    my $self = shift;
-    $self->clear_errors;
-    $self->{valid} = '';
-}
-
-sub clear_errors {
-    my $self = shift;
-    $self->{errors} = {};
-    for my $rule (@{$self->{validators}}) {
-        $self->{errors}->{$rule->{tag}} = [];
-    }
-}
-
-sub error {
-    my ($self, $tag) = @_;
-
-    my $errors = $self->errors($tag);
-
-    return undef unless $errors;
-    return $errors->[0];
-}
-
-sub errors {
-    my ($self, $tag) = @_;
-
-    if ($tag) {
-        return $self->{errors}->{$tag} || [];
-    }
-    else {
-        return $self->guess_error_to_match || [];
-    }
-}
-
-sub guess_error_to_match {
-    my ($self) = @_;
-
-    my %diff;
-    for my $rule (reverse @{$self->{validators}}) {
-        my $tag  = $rule->{tag};
-
-        if (my $errors = $self->{errors}->{$tag}) {
-            my $error_size     = scalar @$errors;
-            $diff{$error_size} = $tag;
-        }
-    }
-    my $min = (sort keys %diff)[0];
-    return $self->{errors}->{$diff{$min}};
+    return $result;
 }
 
 # copy from Plack::Util
@@ -137,6 +78,111 @@ sub _load_class {
     require "$file.pm"; ## no critic
 
     return $class;
+}
+
+package
+    Data::Validator::MultiManager::Result;
+
+sub new {
+    my ($class, $original, $priority) = @_;
+
+    my $self = bless {
+        priority => $priority,
+        errors   => {},
+        tag      => '',
+        values   => {},
+    }, $class;
+    $self->set_original($original);
+    return $self;
+}
+
+sub set_errors {
+    my ($self, $tag, $errors) = @_;
+    $self->{errors}->{$tag} = $errors;
+}
+
+sub set_value {
+    my ($self, $tag, $value) = @_;
+    $self->{values}->{$tag} = $value;
+}
+
+sub set_original {
+    my ($self, $value) = @_;
+    $self->{values}->{_original} = $value;
+}
+
+sub set_tag {
+    my ($self, $tag) = @_;
+    $self->{tag} = $tag;
+}
+
+sub original {
+    my $self = shift;
+    return $self->{values}->{_original};
+}
+
+sub valid {
+    my $self = shift;
+    return $self->{tag};
+}
+
+sub invalid {
+    my $self = shift;
+    return $self->guess_error_tag_to_match;
+}
+
+sub is_valid {
+    my $self = shift;
+    return ($self->{tag})? 1: 0;
+}
+
+sub tag {
+    my $self = shift;
+    return $self->{tag};
+}
+
+sub value {
+    my $self = shift;
+
+    my $tag = $self->tag;
+    return $self->{values}->{$tag};
+}
+
+sub values {
+    my $self = shift;
+    return $self->{values};
+}
+
+sub error {
+    my ($self, $tag) = @_;
+
+    my $errors = $self->errors($tag);
+
+    return undef unless $errors;
+    return $errors->[0];
+}
+
+sub errors {
+    my ($self, $tag) = @_;
+
+    unless ($tag) {
+        $tag = $self->guess_error_tag_to_match;
+    }
+    return $self->{errors}->{$tag} || [];
+}
+
+sub guess_error_tag_to_match {
+    my ($self) = @_;
+
+    my %diff;
+    for my $tag (reverse @{$self->{priority}}) {
+        if (my $errors = $self->{errors}->{$tag}) {
+            my $error_size     = scalar @$errors;
+            $diff{$error_size} = $tag;
+        }
+    }
+    my $min = (sort keys %diff)[0];
+    return $diff{$min};
 }
 
 1;
