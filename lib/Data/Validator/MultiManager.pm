@@ -187,7 +187,7 @@ __END__
 
 =head1 NAME
 
-Data::Validator::MultiManager - It's new $module
+Data::Validator::MultiManager - to manage a multiple validation for Data::Validator
 
 =head1 SYNOPSIS
 
@@ -199,7 +199,7 @@ Data::Validator::MultiManager - It's new $module
 
     my $manager = Data::Validator::MultiManager->new;
     # my $manager = Data::Validator::MultiManager->new('Data::Validator::Recursive');
-    $manager->set_common(
+    $manager->common(
         category => { isa => 'Int' },
     );
     $manager->add(
@@ -216,25 +216,89 @@ Data::Validator::MultiManager - It's new $module
         id       => [1,2],
     };
 
-    $manager->validate($param);
+    my $result = $manager->validate($param);
 
-    if ($manager->is_success) {
-        print "success\n";
+    if (my $e = $result->errors) {
+        errors_common($e);
+        # $result->invalid is guess to match some validator
+        if ($result->invalid eq 'collection') {
+            errors_collection($e);
+        }
+        elsif ($result->invalid eq 'entry') {
+            errors_entry($e);
+        }
     }
-    if ($manager->is_xor) {
-        print "independent validation\n";
-    }
-
-    if ($manager->is_success('collection')) {
-        print "collection process\n";
-    }
-    if ($manager->is_success('entry')) {
-        print "entry process\n";
+    else {
+        if ($result->valid eq 'collection') {
+            process_collection($result->value);
+        }
+        elsif ($result->valid eq 'entry') {
+            process_entry($result->value);
+        }
     }
 
 =head1 DESCRIPTION
 
-Data::Validator::MultiManager is ...
+Data::Validator::MultiManager is to manage a multiple validation for Data::Validator.
+Add rules to 'NoThrow' and 'NoRestrict' by default.
+
+=head1 Manager's METHOD
+
+=head2 C<< Data::Validator::MultiManager->new >>
+
+=head2 C<< $manager->common(@rule) >>
+
+add common rules.
+
+    $manager->common(
+        category => { isa => 'Int' },
+    );
+
+=head2 C<< $manager->add(@rules) >>
+
+add new validation rules.
+
+    $manager->add(
+        collection => {
+            id => { isa => 'ArrayRef' },
+        },
+        entry => {
+            id => { isa => 'Int' },
+        },
+    );
+
+=head2 C<< $manager->validate(@input) >>
+
+validates @args and return ResultSet.
+
+    my $result = $manager->validate($param);
+
+=head1 ResultSet's METHOD
+
+=head2 C<< $result->original >>
+
+return original parameters(C<@input>).
+
+=head2 C<< $result->valid >>
+
+return valid tag.
+
+=head2 C<< $result->invalid >>
+
+return invalid tag.
+(using priority and count of errors)
+
+=head2 C<< $result->values >>
+
+return HASH reference after validate with valid tag.
+
+=head2 C<< $result->error >>
+
+return first error with invalid tag.
+
+=head2 C<< $result->errors >>
+
+return all of errors with invalid tag.
 
 =head1 LICENSE
 
