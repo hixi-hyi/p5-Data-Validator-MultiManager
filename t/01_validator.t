@@ -22,7 +22,7 @@ subtest 'collection' => sub {
 
     ok $result->valid;
     is $result->valid, 'collection';
-    cmp_deeply $result->value, { id => [1, 2] };
+    cmp_deeply $result->values, { id => [1, 2] };
 };
 
 subtest 'entry' => sub {
@@ -30,7 +30,7 @@ subtest 'entry' => sub {
 
     ok $result->valid;
     is $result->valid, 'entry';
-    cmp_deeply $result->value, { id => 1 };
+    cmp_deeply $result->values, { id => 1 };
 };
 
 subtest 'fail' => sub {
@@ -39,7 +39,7 @@ subtest 'fail' => sub {
     ok not $result->valid;
     cmp_deeply $result->error('entry'), superhashof( { name => 'id', type => 'InvalidValue' } );
     cmp_deeply $result->error('collection'), superhashof( { name => 'id', type => 'InvalidValue' } );
-    ok not $result->value;
+    ok not $result->values;
 };
 
 done_testing;

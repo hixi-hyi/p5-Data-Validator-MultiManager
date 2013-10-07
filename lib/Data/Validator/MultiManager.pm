@@ -141,16 +141,11 @@ sub tag {
     return $self->{tag};
 }
 
-sub value {
+sub values {
     my $self = shift;
 
     my $tag = $self->tag;
     return $self->{values}->{$tag};
-}
-
-sub values {
-    my $self = shift;
-    return $self->{values};
 }
 
 sub error {
