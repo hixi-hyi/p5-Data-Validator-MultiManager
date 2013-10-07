@@ -31,7 +31,7 @@ sub add {
     while (my ($tag, $rule) = splice @args, 0, 2) {
         my %merged_rule = (%{clone $self->{common}}, %$rule);
         my $validator = $self->{validator_class}->new(%merged_rule);
-        $validator->with('NoThrow');
+        $validator->with('NoThrow', 'NoRestricted');
 
         push @{$self->{priority}}, $tag;
         $self->{validators}->{$tag} = $validator;
